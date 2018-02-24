@@ -1,0 +1,26 @@
+<configuration>
+
+
+    <!--<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">-->
+        <!--<encoder>-->
+            <!--<pattern>%d{HH:mm:ss.SSS} %magenta([%thread]) %yellow(src=%X{src}) %highlight(%-5level) %cyan(%logger{36}) - %msg%n</pattern>-->
+        <!--</encoder>-->
+    <!--</appender>-->
+
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>page-parser.log</file>
+        <append>true</append>
+        <immediateFlush>true</immediateFlush>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] stc=%X{src} %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="com.eug.md" level="DEBUG"/>
+
+    <root level="info">
+        <appender-ref ref="FILE"/>
+    </root>
+
+    <shutdownHook/>
+</configuration>
