@@ -1,6 +1,6 @@
 package com.eug.md
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder
+import com.eug.md.util.threadPoolExecutor
 import com.xenomachina.argparser.ArgParser
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -9,7 +9,13 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
 import java.util.*
-import java.util.concurrent.*
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
+import java.util.function.Supplier
+import kotlin.collections.HashSet
+import kotlin.math.min
 import kotlin.system.exitProcess
 
 fun main(args: Array<String>) {
@@ -21,16 +27,19 @@ class PageParserApp(args: Array<String>) {
         private val log: Logger = LoggerFactory.getLogger(PageParserApp::class.java)
 
         private const val RESOURCE_LINKS_QUEUE_SIZE = 100
+        private const val EXECUTOR_QUEUE_SIZE = 2000
+        private const val PAGE_LINKS_TO_VISIT_QUEUE_SIZE = 100_000
     }
 
-    private val alreadyVisitedPageLinks: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap())
+    private val alreadyVisitedPageLinks: MutableSet<String> = HashSet()
+    private val pageLinksToVisitQueue: Queue<String> = ArrayBlockingQueue(PAGE_LINKS_TO_VISIT_QUEUE_SIZE)
     private val resourceLinksQueue: RepeatableInsertQueue<String> = RepeatableInsertQueue(
-            queue = LinkedBlockingQueue(RESOURCE_LINKS_QUEUE_SIZE),
+            queue = ArrayBlockingQueue(RESOURCE_LINKS_QUEUE_SIZE),
             insertionTryDelay = Delay(TimeUnit.MILLISECONDS, 100)
     )
 
     private val options: Options
-    private val executor: ExecutorService
+    private val executor: ThreadPoolExecutor
     private val outWriter: OutWriter
 
     init {
@@ -38,8 +47,12 @@ class PageParserApp(args: Array<String>) {
             options = Options(ArgParser(args))
             outWriter = OutWriter(options, resourceLinksQueue)
 
-            val threadFactory = ThreadFactoryBuilder().setNameFormat("app-pool thrd-%d").build()
-            executor = Executors.newFixedThreadPool(options.threadsNumber, threadFactory)
+            val executorQueueSize = min(options.maxLinksNumber, EXECUTOR_QUEUE_SIZE)
+            executor = threadPoolExecutor(
+                    numberOfThreads = options.threadsNumber,
+                    threadsNameFormat = "app-pool thrd-%d",
+                    workQueue = ArrayBlockingQueue(executorQueueSize)
+            )
         } catch (e: Exception) {
             log.error(e.message, e)
             System.err.println(e.message)
@@ -48,13 +61,29 @@ class PageParserApp(args: Array<String>) {
     }
 
     fun run() {
-        outWriter.start()
-
         try {
-            val startUrl = "http://www.sp-fan.ru"
-            processPages(startUrl)
+            startUp()
+            //TODO proper shutdown on app thread exception
 
+            //todo simplify or extract loop logic
             while (!outWriter.maxLinksNumberExceed) {
+                while (executor.queue.remainingCapacity() != 0
+                        && pageLinksToVisitQueue.isNotEmpty()
+                        && !outWriter.maxLinksNumberExceed) {
+
+                    val pageUrl = pageLinksToVisitQueue.poll()
+                    if (alreadyVisitedPageLinks.contains(pageUrl)) {
+                        continue
+                    }
+                    alreadyVisitedPageLinks.add(pageUrl)
+                    CompletableFuture
+                            .supplyAsync(Supplier { processPages(pageUrl) }, executor)
+                            .thenApply { pageLinks ->
+                                log.debug("pageLinks {}", pageLinks)
+                                pageLinks.filterNot(alreadyVisitedPageLinks::contains)
+                                        .forEach { pageLinksToVisitQueue.offer(it) }
+                            }
+                }
                 TimeUnit.MILLISECONDS.sleep(500)
             }
 
@@ -68,38 +97,39 @@ class PageParserApp(args: Array<String>) {
         }
     }
 
-    private fun processPages(pageUrl: String) {
-        if (alreadyVisitedPageLinks.contains(pageUrl) || outWriter.maxLinksNumberExceed) {
-            return
-        }
+    private fun startUp() {
+        val startUrl = "http://www.sp-fan.ru"
+        outWriter.start()
+        pageLinksToVisitQueue.add(startUrl)
+    }
 
+    private fun processPages(pageUrl: String): List<String> {
         try {
             MDC.put("src", pageUrl)
 
             log.debug("Fetching {}...", pageUrl)
             val doc = Jsoup.connect(pageUrl).get()
-            alreadyVisitedPageLinks.add(pageUrl)
-
             val (pageLinkElements, resourceLinkElements) = extractLinkElements(doc)
 
             for (element in resourceLinkElements) {
                 val resourceLink = ElementFormatter.formatResourceLinkOf(element)
-                if (resourceLink == null || outWriter.maxLinksNumberExceed) {
-                    return
+
+                if (resourceLink == null) {
+                    continue
+                }
+
+                if (outWriter.maxLinksNumberExceed) {
+                    return emptyList()
                 }
 
                 resourceLinksQueue.tryToInsertUntil(resourceLink, untilCondition = outWriter.maxLinksNumberExceed)
             }
 
-            pageLinkElements
-                    .map { element -> element.attr("abs:href") }
-                    .filterNot(alreadyVisitedPageLinks::contains)
-                    .forEach {
-                        executor.execute({processPages(it)})
-                    }
+            return pageLinkElements.map { element -> element.attr("abs:href") }
 
         } catch (e: Exception) {
             log.error(e.message, e)
+            return emptyList()
         } finally {
             MDC.clear()
         }

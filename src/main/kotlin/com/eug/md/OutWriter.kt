@@ -25,8 +25,8 @@ class OutWriter(options: Options, private val resourceLinksQueue: Queue<String>)
     }
 
     private fun writeToOut() {
+        //TODO proper shutdown on app thread exception
         while (!maxLinksNumberExceed) {
-            log.debug("Queue size {}", resourceLinksQueue.size)
 
             var link = resourceLinksQueue.poll()
             var queueIsEmpty = link == null

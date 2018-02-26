@@ -26,9 +26,9 @@ class Options(parser: ArgParser) {
                 }
             }
 
-    val maxLinksNumber : Long by parser
+    val maxLinksNumber : Int by parser
             .storing("-m", "--max-links-number", help = "Max links number") {
-                this.toLong()
+                this.toInt()
             }
             .addValidator {
                 if (value < 0) {
