@@ -6,18 +6,18 @@ import java.nio.file.Path
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.BlockingQueue
 
-class WriterService(outFilePath: Path, private val maxLinksNumber: Int) {
+class WriterService(outFilePath: Path, private val maxResourceDownloadTaskNumber: Int) {
 
     companion object {
         val log: Logger = LoggerFactory.getLogger(WriterService::class.java)
-        private const val RESOURCE_LINKS_QUEUE_SIZE = 100
+        private const val RESOURCE_DOWNLOAD_TASK_QUEUE = 100
     }
 
-    private val resourceLinksQueue: BlockingQueue<String> = ArrayBlockingQueue(RESOURCE_LINKS_QUEUE_SIZE)
+    private val resourceDownloadTaskQueue: BlockingQueue<String> = ArrayBlockingQueue(RESOURCE_DOWNLOAD_TASK_QUEUE)
     private val out = outFilePath.toFile().printWriter()
-    private val alreadyWrittenResourceLinks: MutableSet<String> = HashSet()
+    private val alreadyWrittenResourceDownloadTask: MutableSet<String> = HashSet()
     private val writerThread = WriterThread()
-    private var currentLinkNumber = 1
+    private var currentResourceDownloadTaskNumber = 1
 
     @Volatile var stopped = false
         private set
@@ -34,7 +34,7 @@ class WriterService(outFilePath: Path, private val maxLinksNumber: Int) {
 
     fun write(linkLine: String) {
         require(!stopped) {"Writer service already stopped"}
-        resourceLinksQueue.put(linkLine)
+        resourceDownloadTaskQueue.put(linkLine)
     }
 
     inner class WriterThread : Thread("app-writing-thread") {
@@ -43,20 +43,17 @@ class WriterService(outFilePath: Path, private val maxLinksNumber: Int) {
             try {
                 out.use {
                     while (true) {
-                        val link = resourceLinksQueue.take()
-                        if (alreadyWrittenResourceLinks.contains(link)) {
+                        val link = resourceDownloadTaskQueue.take()
+                        if (alreadyWrittenResourceDownloadTask.contains(link)) {
                             continue
                         }
-                        if (link.contains(System.getProperty("line.separator"))) {
-                            log.debug("Line {} contains separator", link)
-                        }
-                        log.debug("Write {} link {} to out", currentLinkNumber, link)
+                        log.debug("Writing {} resource download task line {} to out",
+                                currentResourceDownloadTaskNumber, link)
 
                         out.println(link)
-                        //todo escape \n symbol
-                        alreadyWrittenResourceLinks.add(link)
+                        alreadyWrittenResourceDownloadTask.add(link)
 
-                        if (++currentLinkNumber == maxLinksNumber + 1) {
+                        if (++currentResourceDownloadTaskNumber == maxResourceDownloadTaskNumber + 1) {
                             Thread.currentThread().interrupt()
                         }
                     }
@@ -72,7 +69,7 @@ class WriterService(outFilePath: Path, private val maxLinksNumber: Int) {
 
         private fun close() {
             stopped = true
-            resourceLinksQueue.clear()
+            resourceDownloadTaskQueue.clear()
         }
     }
 }

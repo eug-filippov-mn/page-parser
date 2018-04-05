@@ -3,6 +3,7 @@ package com.eug.md
 import com.eug.md.util.threadPoolExecutor
 import com.google.common.util.concurrent.MoreExecutors
 import com.xenomachina.argparser.ArgParser
+import org.jsoup.HttpStatusException
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.select.Elements
@@ -107,24 +108,27 @@ class PageParserApp(args: Array<String>) {
                     return emptyList()
                 }
 
-                val resourceLink = ElementFormatter.formatResourceLinkOf(resourceLinkElement)
-                if (resourceLink == null) {
+                val downloadTaskLine = DownloadTaskLineExtractor.extractFrom(resourceLinkElement)
+                if (downloadTaskLine == null) {
                     continue
                 }
-                writerService.write(resourceLink)
+                writerService.write(downloadTaskLine)
             }
 
             return pageLinkElements.map { element -> element.attr("abs:href") }
+
+        } catch (e: HttpStatusException) {
+            log.error("Unexpected http error - {}. {}", e.statusCode, e.message)
 
         } catch (e: Exception) {
             if (e is InterruptedException) {
                 Thread.currentThread().interrupt()
             }
             log.error(e.message, e)
-            return emptyList()
         } finally {
             MDC.clear()
         }
+        return emptyList()
     }
 
     private fun extractLinkElements(doc: Document): Pair<Elements, Elements> {

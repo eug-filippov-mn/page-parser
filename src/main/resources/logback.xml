@@ -12,7 +12,7 @@
         <append>true</append>
         <immediateFlush>true</immediateFlush>
         <encoder>
-            <pattern>%d{HH:mm:ss.SSS} [%thread] stc=%X{src} %-5level %logger{36} - %msg%n</pattern>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] src=%X{src} %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
