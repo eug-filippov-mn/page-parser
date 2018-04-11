@@ -3,17 +3,12 @@ package com.eug.md
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.nio.file.Path
-import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.BlockingQueue
+import java.util.concurrent.LinkedBlockingQueue
 
 class WriterService(outFilePath: Path, private val maxResourceDownloadTaskNumber: Int) {
 
-    companion object {
-        val log: Logger = LoggerFactory.getLogger(WriterService::class.java)
-        private const val RESOURCE_DOWNLOAD_TASK_QUEUE = 100
-    }
-
-    private val resourceDownloadTaskQueue: BlockingQueue<String> = ArrayBlockingQueue(RESOURCE_DOWNLOAD_TASK_QUEUE)
+    private val resourceDownloadTaskQueue: BlockingQueue<String> = LinkedBlockingQueue()
     private val out = outFilePath.toFile().printWriter()
     private val alreadyWrittenResourceDownloadTask: MutableSet<String> = HashSet()
     private val writerThread = WriterThread()
@@ -37,7 +32,7 @@ class WriterService(outFilePath: Path, private val maxResourceDownloadTaskNumber
         resourceDownloadTaskQueue.put(linkLine)
     }
 
-    inner class WriterThread : Thread("app-writing-thread") {
+    inner class WriterThread : Thread("resource-task-writing-thread") {
 
         override fun run() {
             try {
@@ -71,5 +66,9 @@ class WriterService(outFilePath: Path, private val maxResourceDownloadTaskNumber
             stopped = true
             resourceDownloadTaskQueue.clear()
         }
+    }
+
+    companion object {
+        val log: Logger = LoggerFactory.getLogger(WriterService::class.java)
     }
 }

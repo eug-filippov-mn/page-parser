@@ -24,7 +24,7 @@ class DownloadTaskLineExecutorTest {
                 }
         )
 
-        val result = DownloadTaskLineExtractor.extractFrom(faviconElement)
+        val result = ResourceDownloadTaskExtractor.extractFrom(faviconElement)
 
         Assertions.assertEquals("$pageUrl/$faviconName icons/${extractHost(pageUrl)}_$faviconName", result)
     }

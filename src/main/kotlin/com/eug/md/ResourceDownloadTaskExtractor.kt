@@ -6,8 +6,8 @@ import org.slf4j.LoggerFactory
 import java.net.URI
 import java.net.URISyntaxException
 
-object DownloadTaskLineExtractor {
-    private val log: Logger = LoggerFactory.getLogger(DownloadTaskLineExtractor::class.java)
+object ResourceDownloadTaskExtractor {
+    private val log: Logger = LoggerFactory.getLogger(ResourceDownloadTaskExtractor::class.java)
 
     private enum class TypedExtractor(
             private val directoryName: String,
