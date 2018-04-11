@@ -35,6 +35,10 @@ class Terminal {
         }
     }
 
+    fun close() {
+        out.print("\r")
+    }
+
     companion object {
         private const val STATUS_LINE_LENGTH = 100
         private val log: Logger = LoggerFactory.getLogger(Terminal::class.java)

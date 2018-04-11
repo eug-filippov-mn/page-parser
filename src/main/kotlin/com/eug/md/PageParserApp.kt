@@ -38,12 +38,13 @@ class PageParserApp private constructor(private val settings: Settings) : Closea
             crawlTaskService.execute(task)
             pageUrlToVisit = pageUrlsToVisitQueue.take()
         }
-        log.debug("Links max number exceed, closing page parser")
+        terminal.statusLine("Links max number exceed, closing page parser")
     }
 
     override fun close() {
         writerService.stop()
         crawlTaskService.stop()
+        terminal.close()
     }
 
     companion object {

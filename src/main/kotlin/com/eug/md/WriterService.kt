@@ -42,10 +42,14 @@ class WriterService(outFilePath: Path, private val maxResourceDownloadTaskNumber
                         if (alreadyWrittenResourceDownloadTask.contains(link)) {
                             continue
                         }
+
                         log.debug("Writing {} resource download task line {} to out",
                                 currentResourceDownloadTaskNumber, link)
 
                         out.println(link)
+                        terminal.statusLine(
+                                "$currentResourceDownloadTaskNumber / $maxResourceDownloadTaskNumber links written"
+                        )
                         alreadyWrittenResourceDownloadTask.add(link)
 
                         if (++currentResourceDownloadTaskNumber == maxResourceDownloadTaskNumber + 1) {
@@ -69,6 +73,7 @@ class WriterService(outFilePath: Path, private val maxResourceDownloadTaskNumber
     }
 
     companion object {
-        val log: Logger = LoggerFactory.getLogger(WriterService::class.java)
+        private val log: Logger = LoggerFactory.getLogger(WriterService::class.java)
+        private val terminal = Terminal()
     }
 }
