@@ -7,8 +7,7 @@ import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import java.net.URI
 
-class DownloadTaskLineExecutorTest {
-
+class ResourceDownloadTaskExtractorTest {
 
     @Test
     fun `should properly extract download task line from favicon link`() {
