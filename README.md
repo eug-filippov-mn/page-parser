@@ -2,7 +2,7 @@
 Extracts urls to download any resource in \<HTTP\|HTTPS link\>whitespace\<file name\> format from pages until number of max links reached
 
 #### Requirements
-Java 1.8 and higher
+Java 1.8
 
 #### Build and package
 ```
