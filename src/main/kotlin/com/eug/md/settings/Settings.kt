@@ -47,14 +47,13 @@ data class Settings(
 
         private fun parseOutFilePath(outFilePathArgValue: String): Path {
             val outFilePath = Paths.get(outFilePathArgValue)
-            if (!Files.exists(outFilePath)) {
-                throw NotValidOptionsException("${Opts.outFilePath.argName} is not exists")
-            }
-            if (Files.isDirectory(outFilePath)) {
-                throw NotValidOptionsException("${Opts.outFilePath.argName} must be a file, not a directory")
-            }
-            if (!Files.isWritable(outFilePath)) {
-                throw NotValidOptionsException("${Opts.outFilePath.argName} isn't writable")
+            if (Files.exists(outFilePath)) {
+                if (Files.isDirectory(outFilePath)) {
+                    throw NotValidOptionsException("${Opts.outFilePath.argName} must be a file, not a directory")
+                }
+                if (!Files.isWritable(outFilePath)) {
+                    throw NotValidOptionsException("${Opts.outFilePath.argName} isn't writable")
+                }
             }
             return outFilePath
         }
